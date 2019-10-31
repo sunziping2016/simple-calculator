@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -7,6 +9,14 @@
 #define MAX_VARIABLE_NAME 20
 #define MAX_VARIABLE_LENGTH 100
 
+#ifndef M_E
+#define M_E        2.71828182845904523536   // e
+#endif // !M_E
+#ifndef M_PI
+#define M_PI       3.14159265358979323846   // pi
+#endif // !M_PI
+
+
 char variable_name[MAX_VARIABLE_LENGTH][MAX_VARIABLE_NAME] = { "pi", "e" };
 double variable_value[MAX_VARIABLE_LENGTH] = { M_PI, M_E };
 size_t variable_size = 2;
@@ -14,7 +24,7 @@ size_t variable_size = 2;
 char buffer[MAX_BUFFER_LENGTH];
 size_t begin, end;
 
-ssize_t getVariable(char *name) {
+ssize_t getVariable(char* name) {
     for (size_t i = 0; i < variable_size; ++i)
         if (strcmp(name, variable_name[i]) == 0)
             return i;
@@ -58,9 +68,9 @@ double parsePrimary() {
         char name[MAX_VARIABLE_NAME];
         memmove(name, buffer + origin_begin, begin - origin_begin);
         name[begin - origin_begin] = '\0';
-        ssize_t index = getVariable(name);
+		ssize_t index = getVariable(name);
         if (index < 0)
-            return 0;
+            return 0.0;
         return variable_value[index];
     }
     double value;
@@ -114,7 +124,7 @@ double parsePostfix() {
                     while (try_begin < end && (isalnum(buffer[try_begin]) || buffer[try_begin] == '_'))
                         ++try_begin;
                 }
-                ssize_t index = -1;
+				ssize_t index = -1;
                 if (try_begin - begin > 0) {
                     if (try_begin - begin < MAX_VARIABLE_NAME) {
                         char name[MAX_VARIABLE_NAME];
@@ -134,10 +144,12 @@ double parsePostfix() {
                     return 0.0;
                 ++begin;
                 double b = parseAssignment();
+                skipWhitespace();
                 if (begin >= end || buffer[begin] != ',')
                     return 0.0;
                 ++begin;
                 double e = parseAssignment();
+                skipWhitespace();
                 if (begin >= end || buffer[begin] != ',')
                     return 0.0;
                 ++begin;
@@ -150,6 +162,7 @@ double parsePostfix() {
                     begin = origin_begin;
                 }
                 parseAssignment();
+                skipWhitespace();
                 if (begin >= end || buffer[begin] != ')')
                     return 0.0;
                 ++begin;
@@ -176,10 +189,12 @@ double parseUnary() {
     if (buffer[begin] == '+') {
         ++begin;
         return parseUnary();
-    } else if (buffer[begin] == '-') {
+    }
+    else if (buffer[begin] == '-') {
         ++begin;
         return -parseUnary();
-    } else if (buffer[begin] == '!') {
+    }
+    else if (buffer[begin] == '!') {
         ++begin;
         return !parseUnary();
     }
@@ -201,10 +216,12 @@ double parseMultiplicative() {
         if (buffer[begin] == '*') {
             ++begin;
             value *= parseUnary();
-        } else if (buffer[begin] == '/') {
+        }
+        else if (buffer[begin] == '/') {
             ++begin;
             value /= parseUnary();
-        } else
+        }
+        else
             break;
     }
     return value;
@@ -225,10 +242,12 @@ double parseAdditive() {
         if (buffer[begin] == '+') {
             ++begin;
             value += parseMultiplicative();
-        } else if (buffer[begin] == '-') {
+        }
+        else if (buffer[begin] == '-') {
             ++begin;
             value -= parseMultiplicative();
-        } else
+        }
+        else
             break;
     }
     return value;
@@ -245,22 +264,23 @@ double parseRelational() {
         skipWhitespace();
         if (begin >= end)
             break;
-        if (begin + 1 < end) {
-            if (buffer[begin] == '<' && buffer[begin + 1] == '=') {
-                begin += 2;
-                value = value <= parseAdditive();
-            } else if (buffer[begin] == '>' && buffer[begin + 1] == '=') {
-                begin += 2;
-                value = value >= parseAdditive();
-            }
+        if (begin + 1 < end && buffer[begin] == '<' && buffer[begin + 1] == '=') {
+            begin += 2;
+            value = value <= parseAdditive();
         }
-        if (buffer[begin] == '<') {
+        else if (begin + 1 < end && buffer[begin] == '>' && buffer[begin + 1] == '=') {
+            begin += 2;
+            value = value >= parseAdditive();
+        }
+        else if (buffer[begin] == '<') {
             ++begin;
             value = value < parseAdditive();
-        } else if (buffer[begin] == '>') {
+        }
+        else if (buffer[begin] == '>') {
             ++begin;
             value = value > parseAdditive();
-        } else
+        }
+        else
             break;
     }
     return value;
@@ -276,15 +296,17 @@ double parseEquality() {
     double value = parseRelational();
     while (1) {
         skipWhitespace();
-        if (begin + 1>= end)
+        if (begin + 1 >= end)
             break;
         if (buffer[begin] == '=' && buffer[begin + 1] == '=') {
             begin += 2;
             value = value == parseRelational();
-        } else if (buffer[begin] == '!' && buffer[begin + 1] == '=') {
+        }
+        else if (buffer[begin] == '!' && buffer[begin + 1] == '=') {
             begin += 2;
             value = value != parseRelational();
-        } else
+        }
+        else
             break;
     }
     return value;
@@ -300,12 +322,13 @@ double parseLogicalAnd() {
     double value = parseEquality();
     while (1) {
         skipWhitespace();
-        if (begin + 1>= end)
+        if (begin + 1 >= end)
             break;
         if (buffer[begin] == '&' && buffer[begin + 1] == '&') {
             begin += 2;
             value = value && parseEquality();
-        } else
+        }
+        else
             break;
     }
     return value;
@@ -321,12 +344,13 @@ double parseLogicalOr() {
     double value = parseLogicalAnd();
     while (1) {
         skipWhitespace();
-        if (begin + 1>= end)
+        if (begin + 1 >= end)
             break;
         if (buffer[begin] == '|' && buffer[begin + 1] == '|') {
             begin += 2;
             value = value || parseLogicalAnd();
-        } else
+        }
+        else
             break;
     }
     return value;
@@ -350,7 +374,8 @@ double parseConditional() {
             ++begin;
             double false_value = parseConditional();
             return condition ? true_value : false_value;
-        } else
+        }
+        else
             return 0.0;
     }
     return condition;
@@ -403,7 +428,8 @@ int main() {
             if (buffer[end - 1] != '\n') {
                 fprintf(stderr, "Buffer overflow.\n");
                 break;
-            } else {
+            }
+            else {
                 --end;
             }
         }
