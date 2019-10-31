@@ -15,7 +15,6 @@ char buffer[MAX_BUFFER_LENGTH];
 size_t begin, end;
 
 ssize_t getVariable(char *name) {
-    printf("get variable %s\n", name);
     for (size_t i = 0; i < variable_size; ++i)
         if (strcmp(name, variable_name[i]) == 0)
             return i;
@@ -52,9 +51,11 @@ double parsePrimary() {
     if (isalpha(buffer[begin]) || buffer[begin] == '_') {
         size_t origin_begin = begin;
         ++begin;
-        while (isalnum(buffer[begin]) || buffer[begin] == '_')
+        while (begin < end && (isalnum(buffer[begin]) || buffer[begin] == '_'))
             ++begin;
-        char name[MAX_BUFFER_LENGTH];
+        if (begin - origin_begin >= MAX_VARIABLE_NAME)
+            return 0.0;
+        char name[MAX_VARIABLE_NAME];
         memmove(name, buffer + origin_begin, begin - origin_begin);
         name[begin - origin_begin] = '\0';
         ssize_t index = getVariable(name);
@@ -84,7 +85,7 @@ double parsePostfix() {
         return 0.0;
     if (isalpha(buffer[begin]) || buffer[begin] == '_') {
         size_t try_begin = begin + 1;
-        while (isalnum(buffer[try_begin]) || buffer[try_begin] == '_')
+        while (try_begin < end && (isalnum(buffer[try_begin]) || buffer[try_begin] == '_'))
             ++try_begin;
         size_t name_len = try_begin - begin;
         if (name_len == 3) {
@@ -114,12 +115,20 @@ double parsePostfix() {
                         ++try_begin;
                 }
                 ssize_t index = -1;
-                if (try_begin - begin > 0 && try_begin - begin < MAX_VARIABLE_NAME) {
-                    char name[MAX_VARIABLE_NAME];
-                    memcpy(name, buffer + begin, try_begin - begin);
-                    name[try_begin - begin] = '\0';
-                    index = getVariable(name);
+                if (try_begin - begin > 0) {
+                    if (try_begin - begin < MAX_VARIABLE_NAME) {
+                        char name[MAX_VARIABLE_NAME];
+                        memcpy(name, buffer + begin, try_begin - begin);
+                        name[try_begin - begin] = '\0';
+                        index = getVariable(name);
+                        if (index == -1) {
+                            index = variable_size;
+                            ++variable_size;
+                            strcpy(variable_name[index], name);
+                        }
+                    }
                 }
+                begin = try_begin;
                 skipWhitespace();
                 if (begin >= end || buffer[begin] != ',')
                     return 0.0;
@@ -135,6 +144,8 @@ double parsePostfix() {
                 size_t origin_begin = begin;
                 double sum = 0;
                 for (double i = b; i <= e; i += 1) { // NOLINT(cert-flp30-c)
+                    if (index != -1)
+                        variable_value[index] = i;
                     sum += parseAssignment();
                     begin = origin_begin;
                 }
@@ -142,6 +153,7 @@ double parsePostfix() {
                 if (begin >= end || buffer[begin] != ')')
                     return 0.0;
                 ++begin;
+                return sum;
             }
         }
     }
