@@ -68,7 +68,7 @@ double parsePrimary() {
         char name[MAX_VARIABLE_NAME];
         memmove(name, buffer + origin_begin, begin - origin_begin);
         name[begin - origin_begin] = '\0';
-		ssize_t index = getVariable(name);
+        ssize_t index = getVariable(name);
         if (index < 0)
             return 0.0;
         return variable_value[index];
@@ -124,7 +124,7 @@ double parsePostfix() {
                     while (try_begin < end && (isalnum(buffer[try_begin]) || buffer[try_begin] == '_'))
                         ++try_begin;
                 }
-				ssize_t index = -1;
+                ssize_t index = -1;
                 if (try_begin - begin > 0) {
                     if (try_begin - begin < MAX_VARIABLE_NAME) {
                         char name[MAX_VARIABLE_NAME];
